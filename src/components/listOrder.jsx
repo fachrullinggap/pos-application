@@ -1,27 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useCatalog } from "@/context/catalogContext";
 
-// --- RECEIVING PROPS ---
-// The component now accepts `cart` and `updateQuantity` as props.
-const ListOrder = ({ cart, updateQuantity }) => {
-  // These states are local to the order form, so they stay here.
+const ListOrder = () => {
+  const { cart, handleUpdateQuantity } = useCatalog();
   const [customerName, setCustomerName] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [orderType, setOrderType] = useState("Dine In");
 
-  // --- REMOVED: The local cart state is gone. We use the `cart` prop instead. ---
-  // const [cart, setCart] = useState([...]);
-
-  // --- REMOVED: The updateQuantity function is now passed via props. ---
-
-  // --- CALCULATIONS: These now work on the `cart` prop. ---
   const subTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const tax = subTotal * 0.1;
   const total = subTotal + tax;
 
   return (
-    <aside className="h-full w-full bg-gray-900/80 backdrop-blur-sm text-white p-6 rounded-lg shadow-lg border border-gray-700 flex flex-col">
+    // --- FIX ---
+    // Change h-full to max-h-full and add overflow-hidden
+    <aside className="h-[927px] w-full bg-gray-900/80 backdrop-blur-sm text-white p-6 rounded-lg shadow-lg border border-gray-700 flex flex-col">
       <div className="text-lg font-semibold text-gray-200">
         No. Order: <span className="text-blue-400">#00123</span>
       </div>
@@ -43,28 +38,15 @@ const ListOrder = ({ cart, updateQuantity }) => {
       </div>
 
       <div className="space-y-3">
-        <input
-          type="text"
-          placeholder="Customer Name"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          className="w-full bg-gray-800 px-4 py-2 rounded-md border border-gray-600 placeholder-gray-400 text-white"
-        />
-        <input
-          type="text"
-          placeholder="Table Number"
-          value={tableNumber}
-          onChange={(e) => setTableNumber(e.target.value)}
-          className="w-full bg-gray-800 px-4 py-2 rounded-md border border-gray-600 placeholder-gray-400 text-white"
-        />
+        <input type="text" placeholder="Customer Name" value={customerName} onChange={(e) => setCustomerName(e.target.value)} className="w-full bg-gray-800 px-4 py-2 rounded-md border border-gray-600 placeholder-gray-400 text-white"/>
+        <input type="text" placeholder="Table Number" value={tableNumber} onChange={(e) => setTableNumber(e.target.value)} className="w-full bg-gray-800 px-4 py-2 rounded-md border border-gray-600 placeholder-gray-400 text-white"/>
       </div>
 
       <div className="border-t border-b border-gray-700 my-4"></div>
 
-      {/* --- Cart Items --- */}
       <h3 className="font-semibold mb-2">My Order</h3>
+      {/* This inner div will now correctly scroll */}
       <div className="flex-1 space-y-3 overflow-y-auto pr-2">
-        {/* --- UPDATE: Map over the `cart` prop. --- */}
         {cart.length === 0 ? (
           <p className="text-gray-400 text-center py-10">Your cart is empty.</p>
         ) : (
@@ -74,23 +56,19 @@ const ListOrder = ({ cart, updateQuantity }) => {
                 <img src={item.image} alt={item.name} className="w-12 h-12 rounded-md object-cover"/>
                 <div>
                   <p className="font-medium">{item.name}</p>
-                  <p className="text-gray-400">
-                    Rp {item.price.toLocaleString()}
-                  </p>
+                  <p className="text-gray-400">Rp {item.price.toLocaleString()}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                {/* --- UPDATE: Buttons now call the `updateQuantity` prop. --- */}
-                <button onClick={() => updateQuantity(item.id, -1)} className="bg-gray-700 w-7 h-7 rounded-full transition hover:bg-gray-600">-</button>
+                <button onClick={() => handleUpdateQuantity(item.id, -1)} className="bg-gray-700 w-7 h-7 rounded-full transition hover:bg-gray-600">-</button>
                 <span className="w-4 text-center font-semibold">{item.quantity}</span>
-                <button onClick={() => updateQuantity(item.id, 1)} className="bg-gray-700 w-7 h-7 rounded-full transition hover:bg-gray-600">+</button>
+                <button onClick={() => handleUpdateQuantity(item.id, 1)} className="bg-gray-700 w-7 h-7 rounded-full transition hover:bg-gray-600">+</button>
               </div>
             </div>
           ))
         )}
       </div>
 
-      {/* --- Summary --- */}
       {cart.length > 0 && (
         <div className="border-t border-gray-700 mt-4 pt-4 space-y-2">
           <div className="flex justify-between text-sm">
