@@ -1,13 +1,13 @@
 // src/context/catalogReducer.jsx
 
 const initialFoodItems = [
-  { id: 1, name: "Cheeseburger", price: "35.000", image: "/images/burger.jpg", category: "Foods" },
-  { id: 2, name: "French Fries", price: "20.000", image: "/images/fries.jpg", category: "Foods" },
-  { id: 3, name: "Chicken Wings", price: "40.000", image: "/images/wings.jpg", category: "Foods" },
-  { id: 4, name: "Iced Coffee", price: "25.000", image: "/images/coffee.jpg", category: "Beverages" },
-  { id: 5, name: "Sushi Roll", price: "50.000", image: "/images/sushi.jpg", category: "Foods" },
-  { id: 6, name: "Chocolate Cake", price: "30.000", image: "/images/cake.jpg", category: "Dessert" },
-  { id: 7, name: "Vanilla Cake", price: "30.000", image: "/images/cake.jpg", category: "Dessert" },
+  { id: 1, name: "Cheeseburger", price: "35.000", image: "/images/burger.jpg", category: "Foods", detail: "Classic beef patty with cheddar cheese and fresh vegetables." },
+  { id: 2, name: "French Fries", price: "20.000", image: "/images/fries.jpg", category: "Foods", detail: "Crispy golden potato fries, lightly salted." },
+  { id: 3, name: "Chicken Wings", price: "40.000", image: "/images/wings.jpg", category: "Foods", detail: "Spicy and tangy chicken wings, perfect for sharing." },
+  { id: 4, name: "Iced Coffee", price: "25.000", image: "/images/coffee.jpg", category: "Beverages", detail: "Rich espresso with milk and sugar, served over ice." },
+  { id: 5, name: "Sushi Roll", price: "50.000", image: "/images/sushi.jpg", category: "Foods", detail: "Fresh salmon and avocado wrapped in seaweed and rice." },
+  { id: 6, name: "Chocolate Cake", price: "30.000", image: "/images/cake.jpg", category: "Dessert", detail: "Decadent dark chocolate cake with a molten center." },
+  { id: 7, name: "Vanilla Cake", price: "30.000", image: "/images/cake.jpg", category: "Dessert", detail: "Light and fluffy vanilla sponge cake with buttercream frosting." },
 ];
 
 export const actionTypes = {

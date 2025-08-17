@@ -3,6 +3,7 @@ import "./globals.css";
 import { AuthProvider } from "@/context/authContext";
 import { CatalogProvider } from "@/context/catalogContext";
 
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {

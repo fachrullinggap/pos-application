@@ -16,7 +16,7 @@ const ListOrder = () => {
   return (
     // --- FIX ---
     // Change h-full to max-h-full and add overflow-hidden
-    <aside className="h-[927px] w-full bg-gray-900/80 backdrop-blur-sm text-white p-6 rounded-lg shadow-lg border border-gray-700 flex flex-col">
+    <aside className="h-full w-full bg-gray-900/80 backdrop-blur-sm text-white p-6 rounded-lg shadow-lg border border-gray-700 flex flex-col">
       <div className="text-lg font-semibold text-gray-200">
         No. Order: <span className="text-blue-400">#00123</span>
       </div>
