@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useCatalog } from "@/context/catalogContext";
-import { UploadCloud, X } from "lucide-react";
+import { X } from "lucide-react";
 
 export default function EditMenu({ itemToEdit, onFinished }) {
   const { handleEditMenuItem, categories } = useCatalog();
@@ -10,21 +10,27 @@ export default function EditMenu({ itemToEdit, onFinished }) {
   const [price, setPrice] = useState("");
   const [detail, setDetail] = useState("");
   const [category, setCategory] = useState("Foods");
+
+  const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (itemToEdit) {
       setName(itemToEdit.name);
-      setPrice(itemToEdit.price);
+      setPrice(String(itemToEdit.price));
       setCategory(itemToEdit.category);
       setImagePreview(itemToEdit.image);
       setDetail(itemToEdit.detail || "");
+      setImageFile(null);
     }
   }, [itemToEdit]);
 
   const handleFileChange = (file) => {
     if (file && file.type.startsWith("image/")) {
+      setImageFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
@@ -43,18 +49,35 @@ export default function EditMenu({ itemToEdit, onFinished }) {
     handleFileChange(e.dataTransfer.files[0]);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const updatedItem = {
-      ...itemToEdit,
-      name,
-      price,
-      detail,
-      category,
-      image: imagePreview,
-    };
-    handleEditMenuItem(updatedItem);
-    onFinished();
+    setIsSubmitting(true);
+
+    const formData = new FormData();
+
+    // --- Append only the fields that have changed ---
+    if (name !== itemToEdit.name) formData.append('name', name);
+    if (price !== String(itemToEdit.price)) formData.append('price', price.replace(/\./g, ''));
+    if (detail !== itemToEdit.detail) formData.append('detail', detail);
+    if (category !== itemToEdit.category) formData.append('category', category);
+    if (imageFile) {
+      formData.append('productPicture', imageFile);
+    }
+    // ------------------------------------------------
+
+    // Only call API if there are changes
+    if (Array.from(formData.keys()).length > 0) {
+      const result = await handleEditMenuItem(itemToEdit.id, formData);
+      
+      if (!result.success) {
+        alert(`Error: ${result.error}`);
+      } else {
+        alert(result.message); 
+      }
+    }
+    
+    setIsSubmitting(false);
+    onFinished(); // Close the form
   };
 
   if (!itemToEdit) return null;
@@ -92,8 +115,12 @@ export default function EditMenu({ itemToEdit, onFinished }) {
           {categories.filter(c => c !== "All Menu").map(cat => (<option key={cat} value={cat}>{cat}</option>))}
         </select>
 
-        <button type="submit" className="mt-auto w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition">
-          Save Changes
+        <button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="mt-auto w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50"
+        >
+          {isSubmitting ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
     </aside>

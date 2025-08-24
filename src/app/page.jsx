@@ -10,19 +10,15 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
 
   const router = useRouter();
   const { login } = useAuth();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setError("");
-    const isLoginSuccessful = login(username, password);
+    const isLoginSuccessful = await login(username, password);
     if (isLoginSuccessful) {
       router.push("/catalog");
-    } else {
-      setError("Invalid username or password. Please try again.");
     }
   };
 
@@ -82,7 +78,7 @@ export default function LoginPage() {
           {/* Username Input */}
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-200">Username</label>
-            <input id="username" name="username" type="text" required value={username} onChange={(e) => setUsername(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-800/50 text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 p-2" placeholder="Enter 'admin' or 'cashier'"/>
+            <input id="username" name="username" type="text" required value={username} onChange={(e) => setUsername(e.target.value)} className="mt-1 block w-full rounded-md border border-gray-600 bg-gray-800/50 text-white placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 p-2" placeholder="Enter username"/>
           </div>
 
           {/* Password Input */}
@@ -95,8 +91,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-
-          {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
           <motion.button
             // --- ANIMATION: Interactive button effects ---

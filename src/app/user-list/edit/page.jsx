@@ -6,46 +6,111 @@ import NextNav from '@/components/navigation/nextNav';
 import Header from '@/components/header/header';
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from 'framer-motion';
-import { Save, X } from 'lucide-react';
+import { Save, X, AlertCircle } from 'lucide-react';
 
-// Re-using the mock data to find the user to edit
-const mockUsers = [
-    { id: 1, username: 'admin_user', email: 'admin@padipos.com', role: 'Admin' },
-    { id: 2, username: 'fachrul', email: 'fachrul@example.com', role: 'Cashier' },
-    { id: 3, username: 'budi_s', email: 'budi.santoso@mail.com', role: 'Cashier' },
-    { id: 4, username: 'citra_l', email: 'citra.l@mail.com', role: 'Cashier' },
-    { id: 5, username: 'dewi_a', email: 'dewi.anggraini@mail.com', role: 'Admin' },
-];
-
+// This component now handles all the logic for fetching, displaying, and updating the form.
 function EditUserForm() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const userId = searchParams.get('id');
+    const { userToken } = useAuth();
 
+    // Form field states
     const [username, setUsername] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [role, setRole] = useState('Cashier');
+    const [role, setRole] = useState('cashier');
+
+    // States for loading, submitting, and error handling
+    const [isLoading, setIsLoading] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [error, setError] = useState(null);
     
+    // 1. Fetch user data from API when the component mounts or userId changes
     useEffect(() => {
-        if (userId) {
-            // In a real app, you would fetch this data from an API
-            const userToEdit = mockUsers.find(u => u.id === parseInt(userId));
-            if (userToEdit) {
-                setUsername(userToEdit.username);
-                setEmail(userToEdit.email);
-                setRole(userToEdit.role);
-            }
+        if (!userId || !userToken) {
+            setIsLoading(false);
+            return;
         }
-    }, [userId]);
+
+        const fetchUserData = async () => {
+            try {
+                // Assumes you have an endpoint like GET /api/user/:id
+                const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/get-user/${userId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${userToken}`
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user data.');
+                }
+
+                const result = await response.json();
+                if (result.data) {
+                    setUsername(result.data.username);
+                    setEmail(result.data.email);
+                    setRole(result.data.role);
+                }
+            } catch (err) {
+                console.error(err);
+                setError(err.message);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchUserData();
+    }, [userId, userToken]);
     
-    const handleSubmit = (e) => {
+    // 2. Handle form submission to the API
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        // Add your logic to update the user via API
-        console.log("Updating user:", { userId, username, email, password: password ? '********' : 'unchanged', role });
-        alert("User updated successfully!");
-        router.push('/user-list');
+        setIsSubmitting(true);
+        setError(null);
+
+        // Construct the update payload.
+        // Only include fields that are being changed.
+        const updateData = {
+            username,
+            email,
+            userRole: role.toLowerCase(),
+        };
+
+        // Only include the password if the user has entered a new one
+        if (password) {
+            updateData.password = password;
+        }
+
+        try {
+            // Assumes you have an endpoint like PATCH /api/user/update/:id
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/user/update/${userId}`, {
+                method: 'PATCH', // PATCH is often better for updates than PUT
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${userToken}`
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Failed to update user.');
+            }
+
+            alert("User updated successfully!");
+            router.push('/user-list');
+        } catch (err) {
+            console.error(err);
+            setError(err.message);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
+
+    if (isLoading) {
+        return <div className="text-center p-10">Loading user data...</div>;
+    }
 
     return (
         <motion.div
@@ -56,7 +121,8 @@ function EditUserForm() {
         >
             <form onSubmit={handleSubmit}>
                 <div className="space-y-6">
-                    <div>
+                    {/* Input fields... */}
+                     <div>
                         <label htmlFor="username" className="block text-sm font-medium text-gray-400 mb-2">Username</label>
                         <input
                             type="text" id="username" value={username} onChange={(e) => setUsername(e.target.value)} required
@@ -84,19 +150,26 @@ function EditUserForm() {
                             id="role" value={role} onChange={(e) => setRole(e.target.value)}
                             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         >
-                            <option value="Cashier">Cashier</option>
-                            <option value="Admin">Admin</option>
+                            <option value="cashier">Cashier</option>
+                            <option value="admin">Admin</option>
                         </select>
                     </div>
                 </div>
-                <div className="flex justify-end gap-4 mt-8">
-                     <button type="button" onClick={() => router.push('/user-list')}
-                        className="flex items-center gap-2 px-4 py-2 bg-gray-600/50 hover:bg-gray-600/80 rounded-lg text-sm font-semibold transition-colors">
+                {error && (
+                    <div className="mt-4 mb-4 p-3 bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-center">
+                        {error}
+                    </div>
+                )}
+                <div className="flex justify-end items-center gap-4 mt-8">
+                   <button type="button" onClick={() => router.push('/user-list')}
+                        disabled={isSubmitting}
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-600/50 hover:bg-gray-600/80 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50">
                         <X size={16} /> Cancel
                     </button>
                     <button type="submit"
-                        className="flex items-center gap-2 px-4 py-2 bg-green-600/90 hover:bg-green-600 rounded-lg text-sm font-semibold transition-colors">
-                        <Save size={16} /> Save Changes
+                        disabled={isSubmitting}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-600/90 hover:bg-green-600 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        <Save size={16} /> {isSubmitting ? 'Saving...' : 'Save Changes'}
                     </button>
                 </div>
             </form>
@@ -104,14 +177,15 @@ function EditUserForm() {
     );
 }
 
+
+// This is the main page component that wraps the form
 export default function EditUserPage() {
-    const { userRole, loading } = useAuth();
+    const { userRole, loading: authLoading } = useAuth();
     
-    if (loading) {
+    if (authLoading) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>;
     }
 
-    // You can add more robust role checks here if needed
     if (userRole !== 'admin') {
          return (
             <div className="flex h-screen bg-gradient-to-br from-gray-900 to-gray-950 text-white font-sans overflow-hidden">
@@ -131,7 +205,7 @@ export default function EditUserPage() {
             <NextNav />
             <main className="flex-1 p-8 flex flex-col overflow-hidden">
                 <Header title="Edit User" />
-                <Suspense fallback={<div>Loading form...</div>}>
+                <Suspense fallback={<div className="text-center p-10">Loading form...</div>}>
                     <EditUserForm />
                 </Suspense>
             </main>

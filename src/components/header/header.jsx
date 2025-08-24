@@ -1,16 +1,19 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from "@/context/authContext";
 import { format } from 'date-fns';
 
 // The component now accepts a 'title' prop to be reusable
 export default function Header({ title }) {
-  const { userRole, loading } = useAuth();
+  const { userRole, userName, userPicture, loading } = useAuth();
+
+  const [profilePicture, setProfilePicture] = useState(null);
 
   const user = {
-    name: 'Fachrul',
-    imageUrl: `https://ui-avatars.com/api/?name=Fachrul&background=3b82f6&color=fff`
+    name: userName,
+    // imageUrl: `https://ui-avatars.com/api/?name=${userName}&background=3b82f6&color=fff`
   };
 
   // Optional: Loading skeleton
@@ -28,6 +31,15 @@ export default function Header({ title }) {
       </header>
     );
   }
+
+  useEffect(() => {
+      if (userPicture) {
+          setProfilePicture(userPicture);
+      } else if (userName) {
+          // Fallback to ui-avatars if no picture is saved
+          setProfilePicture(`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=3b82f6&color=fff&size=128`);
+      }
+  }, [userPicture]);
 
   return (
     <motion.header
@@ -51,11 +63,11 @@ export default function Header({ title }) {
             className="flex items-center gap-3 cursor-pointer"
           >
             <div className="text-right">
-              <p className="font-semibold text-white capitalize">{user.name}</p>
-              <p className="text-xs text-gray-400 capitalize">{userRole}</p>
+              <p className="font-semibold text-white">{user.name}</p>
+              <p className="text-xs text-gray-400">{userRole}</p>
             </div>
             <img
-              src={user.imageUrl}
+              src={profilePicture}
               alt="Profile Picture"
               className="w-11 h-11 rounded-full border-2 border-white/20"
             />

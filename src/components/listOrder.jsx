@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useCatalog } from "@/context/catalogContext";
 
 const ListOrder = () => {
-  const { cart, handleUpdateQuantity } = useCatalog();
+  const { state, handleUpdateQuantity } = useCatalog();
+  const { cart } = state;
   const [customerName, setCustomerName] = useState("");
   const [tableNumber, setTableNumber] = useState("");
   const [orderType, setOrderType] = useState("Dine In");

@@ -13,6 +13,7 @@ export default function AddMenu() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleFileChange = (file) => {
     if (file && file.type.startsWith("image/")) {
@@ -41,27 +42,43 @@ export default function AddMenu() {
     setImagePreview(null);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name || !price || !detail || !category || !imagePreview) {
+    if (!name || !price || !detail || !category || !imageFile) {
       alert("Please fill all fields and add an image.");
       return;
     }
-    const newItem = {
-      id: Date.now(),
-      name,
-      price,
-      detail,
-      category,
-      image: imagePreview,
-    };
-    handleAddMenuItem(newItem);
-    // Reset form
-    setName("");
-    setPrice("");
-    setDetail("");
-    setCategory("Foods");
-    clearImage();
+
+    setIsSubmitting(true);
+
+    // --- MODIFIED: Create FormData instead of a plain object ---
+    const formData = new FormData();
+    formData.append('name', name);
+    // Send price without dots or commas
+    formData.append('price', price.replace(/\./g, '')); 
+    formData.append('detail', detail);
+    formData.append('category', category);
+    // Use the correct field name your backend expects (e.g., 'productImage' or 'productPicture')
+    formData.append('productPicture', imageFile); 
+
+    // Call the async function from the context
+    const result = await handleAddMenuItem(formData);
+
+    setIsSubmitting(false);
+
+    if (result.success) {
+      // Reset form on successful submission
+      setName("");
+      setPrice("");
+      setDetail("");
+      setCategory("Foods");
+      setImageFile(null);
+      setImagePreview(null);
+      alert("Item added successfully!");
+    } else {
+      // Show error message if submission failed
+      alert(`Error: ${result.error}`);
+    }
   };
 
   return (
@@ -111,8 +128,12 @@ export default function AddMenu() {
           ))}
         </select>
 
-        <button type="submit" className="mt-auto w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition">
-          Add Item to Menu
+        <button 
+          type="submit" 
+          disabled={isSubmitting} // Disable button while submitting
+          className="mt-auto w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {isSubmitting ? 'Adding...' : 'Add Item to Menu'}
         </button>
       </form>
     </aside>

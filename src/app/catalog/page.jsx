@@ -27,9 +27,16 @@ export default function CatalogPage() {
     setEditingItem(null);
   };
 
-  const handleDeleteClick = (itemId) => {
+  const handleDeleteClick = async (itemId) => {
     if (window.confirm("Are you sure you want to permanently delete this item?")) {
-      handleDeleteMenuItem(itemId);
+      // handleDeleteMenuItem(itemId);
+      const result = await handleDeleteMenuItem(itemId);
+
+      if (!result.success) {
+        alert(`Error: ${result.error}`);
+      } else {
+        alert(result.message); 
+      }
     }
   };
 

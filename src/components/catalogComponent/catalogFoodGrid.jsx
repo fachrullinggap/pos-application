@@ -48,7 +48,7 @@ export default function CatalogFoodGrid({ userRole, onEditClick, onDeleteClick }
 
               <p className="text-xs text-gray-500 mt-1 mb-2">{item.detail}</p>
               
-              <p className="text-sm text-gray-400 flex-grow mb-3">Rp {item.price}</p>
+              <p className="text-sm text-gray-400 flex-grow mb-3">Rp {item.price.toLocaleString('id-ID')}</p>
               
               {userRole !== 'admin' && (
                 <button
