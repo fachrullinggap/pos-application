@@ -1,6 +1,5 @@
 "use client";
 
-// FIX 1: Add useEffect and useCallback to imports
 import {
   createContext,
   useContext,
@@ -47,7 +46,7 @@ export const CatalogProvider = ({ children }) => {
     fetchProducts();
   }, [userToken]);
 
-  // OPTIMIZATION 2: Wrap handler functions in useCallback
+  // --- Memoized Handler Functions ---
   const handleAddToCart = useCallback(
     (itemToAdd) =>
       dispatch({ type: actionTypes.ADD_TO_CART, payload: itemToAdd }),
@@ -61,6 +60,10 @@ export const CatalogProvider = ({ children }) => {
       }),
     []
   );
+  const handleClearCart = useCallback(
+    () => dispatch({ type: actionTypes.CLEAR_CART }),
+    []
+  );
   const setSearch = useCallback(
     (searchTerm) =>
       dispatch({ type: actionTypes.SET_SEARCH, payload: searchTerm }),
@@ -72,49 +75,34 @@ export const CatalogProvider = ({ children }) => {
     []
   );
   
+  // --- CRUD Functions for Admin ---
   const handleAddMenuItem = useCallback(
     async (formData) => {
-      // Dispatch a loading state if you want to show a spinner
-      // dispatch({ type: actionTypes.SET_LOADING, payload: true });
-
       try {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/product/create`,
           {
             method: "POST",
-            headers: {
-              // IMPORTANT: Do NOT set 'Content-Type'.
-              // The browser will automatically set it to 'multipart/form-data'
-              // with the correct boundary when the body is a FormData object.
-              Authorization: `Bearer ${userToken}`,
-            },
+            headers: { Authorization: `Bearer ${userToken}` },
             body: formData,
           }
         );
-
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "Failed to add new item.");
         }
-
         const result = await response.json();
-        
-        // Dispatch the new item returned from the API to update the local state
         dispatch({
           type: actionTypes.ADD_MENU_ITEM,
-          payload: result.data, // Assuming the API returns the new item in a 'data' property
+          payload: result.data,
         });
-
-        return { success: true }; // Return success status to the component
-
+        return { success: true };
       } catch (error) {
         console.error("Error adding menu item:", error);
-        // Optionally dispatch an error to the reducer
-        // dispatch({ type: actionTypes.SET_ERROR, payload: error.message });
-        return { success: false, error: error.message }; // Return error status
+        return { success: false, error: error.message };
       }
     },
-    [userToken] // Add userToken as a dependency
+    [userToken]
   );
 
   const handleEditMenuItem = useCallback(
@@ -124,26 +112,19 @@ export const CatalogProvider = ({ children }) => {
           `${process.env.NEXT_PUBLIC_API_URL}/api/product/edit-product/${itemId}`,
           {
             method: "PATCH",
-            headers: {
-              Authorization: `Bearer ${userToken}`,
-            },
+            headers: { Authorization: `Bearer ${userToken}` },
             body: formData,
           }
         );
-
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "Gagal merubah produk.");
         }
-
         const result = await response.json();
-
-        // Dispatch the updated item returned from the API
         dispatch({
           type: actionTypes.EDIT_MENU_ITEM,
-          payload: result.data, // Assuming the API returns the updated item in 'data'
+          payload: result.data,
         });
-
         return { success: true, message: result.message };
       } catch (error) {
         console.error("Error updating menu item:", error);
@@ -154,42 +135,68 @@ export const CatalogProvider = ({ children }) => {
   );
 
   const handleDeleteMenuItem = useCallback(
-    // (itemId) =>
-    //   dispatch({ type: actionTypes.DELETE_MENU_ITEM, payload: itemId }),
-    // []
-
     async (itemId) => {
       try {
         const response = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL}/api/product/delete/${itemId}`,
           {
             method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${userToken}`,
-            },
+            headers: { Authorization: `Bearer ${userToken}` },
           }
         );
-
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.message || "Gagal menghapus produk.");
         }
-
         const result = await response.json();
-
         dispatch({
           type: actionTypes.DELETE_MENU_ITEM,
           payload: itemId,
         });
-
         return { success: true, message: result.message };
       } catch (error) {
-        console.error("Error updating menu item:", error);
+        console.error("Error deleting menu item:", error);
         return { success: false, error: error.message };
       }
     },
     [userToken]
   );
+
+  // --- NEW: Function to handle order creation ---
+  const handleCreateOrder = useCallback(
+    async (orderData) => {
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/order/create`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${userToken}`,
+            },
+            body: JSON.stringify(orderData),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to create order.");
+        }
+
+        const result = await response.json();
+        
+        // After successful order, clear the cart
+        dispatch({ type: actionTypes.CLEAR_CART });
+
+        return { success: true, message: "Order created successfully!", data: result.data };
+      } catch (error) {
+        console.error("Error creating order:", error);
+        return { success: false, error: error.message };
+      }
+    },
+    [userToken]
+  );
+
 
   // --- Memoized Filtering ---
   const filteredItems = useMemo(() => {
@@ -204,22 +211,8 @@ export const CatalogProvider = ({ children }) => {
     });
   }, [state.search, state.selectedCategory, state.foodItems]);
 
-  // OPTIMIZATION 1 & 3: Memoize the context value and simplify it
   const value = useMemo(
     () => ({
-      state, // Provide the whole state object
-      categories,
-      filteredItems,
-      // Provide the memoized handler functions
-      setSearch,
-      setSelectedCategory,
-      handleAddToCart,
-      handleUpdateQuantity,
-      handleAddMenuItem,
-      handleEditMenuItem,
-      handleDeleteMenuItem,
-    }),
-    [
       state,
       categories,
       filteredItems,
@@ -227,9 +220,24 @@ export const CatalogProvider = ({ children }) => {
       setSelectedCategory,
       handleAddToCart,
       handleUpdateQuantity,
+      handleClearCart, // <-- Export clear cart function
       handleAddMenuItem,
       handleEditMenuItem,
       handleDeleteMenuItem,
+      handleCreateOrder, // <-- Export new order function
+    }),
+    [
+      state,
+      filteredItems,
+      setSearch,
+      setSelectedCategory,
+      handleAddToCart,
+      handleUpdateQuantity,
+      handleClearCart,
+      handleAddMenuItem,
+      handleEditMenuItem,
+      handleDeleteMenuItem,
+      handleCreateOrder,
     ]
   );
 

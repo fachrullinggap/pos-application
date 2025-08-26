@@ -4,21 +4,30 @@ import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/authContext";
-import { motion } from "framer-motion"; // --- ANIMATION: Import motion ---
+import { motion } from "framer-motion";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoggingIn, setIsLoggingIn] = useState(false); // 1. Add loading state
 
   const router = useRouter();
   const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    const isLoginSuccessful = await login(username, password);
-    if (isLoginSuccessful) {
-      router.push("/catalog");
+    setIsLoggingIn(true); // 2. Set loading to true on submit
+    try {
+      const isLoginSuccessful = await login(username, password);
+      if (isLoginSuccessful) {
+        router.push("/catalog");
+      }
+    } catch (error) {
+        // The login function in the context already handles alerts for the user
+        console.error("Login failed on page:", error);
+    } finally {
+        setIsLoggingIn(false); // 3. Set loading to false after API call finishes
     }
   };
 
@@ -54,7 +63,7 @@ export default function LoginPage() {
         animate={{ scale: 1.05 }}
         transition={{ duration: 20, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
       >
-        <img src="/images/POS.jpeg" alt="Background" className="w-full h-full object-cover" />
+        <img src="/images/POS.jpeg" alt="Background" className="w-full h-full object-cover" onError={(e) => { e.target.onerror = null; e.target.src='https://placehold.co/1920x1080/000000/FFFFFF?text=Background+Image'; }} />
         <div className="absolute inset-0 bg-black/50" />
       </motion.div>
 
@@ -94,12 +103,13 @@ export default function LoginPage() {
 
           <motion.button
             // --- ANIMATION: Interactive button effects ---
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: isLoggingIn ? 1 : 1.05 }}
+            whileTap={{ scale: isLoggingIn ? 1 : 0.95 }}
             type="submit"
-            className="w-full flex justify-center py-2 px-4 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm transition-all"
+            disabled={isLoggingIn} // 4. Disable button when loading
+            className="w-full flex justify-center py-2 px-4 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-sm transition-all disabled:bg-blue-400 disabled:cursor-not-allowed" // 5. Add disabled styles
           >
-            Login
+            {isLoggingIn ? "Logging in..." : "Login"}
           </motion.button>
         </motion.form>
       </motion.div>

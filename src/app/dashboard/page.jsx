@@ -1,66 +1,21 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from "@/context/authContext";
 import NextNav from '@/components/navigation/nextNav';
 import Header from '@/components/header/header';
 import { useRouter } from "next/navigation";
 import { motion } from 'framer-motion';
-import { BarChart, DollarSign, Utensils, GlassWater, IceCream, ChefHat, Search, X } from 'lucide-react';
-import { format, subDays, startOfDay, addDays, isBefore, isEqual } from 'date-fns';
+import { BarChart, DollarSign, Utensils, GlassWater, IceCream, ChefHat, Search, X, AlertCircle } from 'lucide-react';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { BarChart as MuiBarChart } from '@mui/x-charts/BarChart';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 
-// --- MOCK DATA ---
-const generateMockData = (startDateStr, endDateStr) => {
-    const data = [];
-    let currentDate = new Date(startDateStr);
-    const endDate = new Date(endDateStr);
-
-    while (isBefore(currentDate, endDate) || isEqual(currentDate, endDate)) {
-        data.push({
-            date: format(currentDate, 'yyyy-MM-dd'),
-            food: Math.floor(Math.random() * 80000) + 20000,
-            beverage: Math.floor(Math.random() * 150000) + 50000,
-            dessert: Math.floor(Math.random() * 50000) + 5000,
-        });
-        currentDate = addDays(currentDate, 1);
-    }
-    return data;
-};
-
-const dailyOmzet = generateMockData('2025-08-01', '2025-09-30');
-
-const foodSalesData = [
-    { name: 'Nasi Goreng Spesial', sales: 150 },
-    { name: 'Ayam Bakar Madu', sales: 125 },
-    { name: 'Sate Ayam', sales: 110 },
-    { name: 'Iga Bakar', sales: 95 },
-    { name: 'Sop Buntut', sales: 80 },
-];
-
-const beverageSalesData = [
-    { name: 'Es Teh Manis', sales: 250 },
-    { name: 'Jus Alpukat', sales: 180 },
-    { name: 'Kopi Susu', sales: 150 },
-    { name: 'Lemon Tea', sales: 120 },
-    { name: 'Es Jeruk', sales: 100 },
-];
-
-const dessertSalesData = [
-    { name: 'Pudding Coklat', sales: 90 },
-    { name: 'Cheesecake', sales: 75 },
-    { name: 'Pisang Goreng Keju', sales: 120 },
-    { name: 'Brownies', sales: 60 },
-];
-// --- END MOCK DATA ---
-
-
 // --- UI COMPONENTS ---
-const StatCard = ({ icon, title, value, onClick, className }) => (
+const StatCard = ({ icon, title, value, onClick, className, isLoading }) => (
     <motion.div
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        whileHover={{ scale: isLoading ? 1 : 1.05 }}
+        whileTap={{ scale: isLoading ? 1 : 0.95 }}
         className={`bg-white/5 backdrop-blur-sm p-6 rounded-2xl border border-white/10 flex items-center gap-6 shadow-lg ${onClick ? 'cursor-pointer' : ''} ${className}`}
         onClick={onClick}
     >
@@ -69,17 +24,23 @@ const StatCard = ({ icon, title, value, onClick, className }) => (
         </div>
         <div>
             <p className="text-gray-400 text-sm">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
+            {isLoading ? (
+                 <div className="h-8 w-32 bg-gray-700 rounded animate-pulse mt-1"></div>
+            ) : (
+                <p className="text-2xl font-bold">{value}</p>
+            )}
         </div>
     </motion.div>
 );
 
-const SalesDetailModal = ({ open, onClose, title, data }) => {
+const SalesDetailModal = ({ open, onClose, title, data, isLoading }) => {
     const [searchTerm, setSearchTerm] = useState('');
     if (!open) return null;
+    
     const filteredData = data.filter(item =>
         item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
+
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4" onClick={onClose}>
             <motion.div
@@ -98,29 +59,33 @@ const SalesDetailModal = ({ open, onClose, title, data }) => {
                         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                         <input
                             type="text"
-                            placeholder="Search keyword here..."
+                            placeholder="Search menu..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         />
                     </div>
                     <div className="max-h-80 overflow-y-auto">
-                        <table className="w-full text-left">
-                            <thead className="sticky top-0 bg-gray-900">
-                                <tr>
-                                    <th className="p-2 text-sm font-semibold text-gray-400">Menu Name</th>
-                                    <th className="p-2 text-sm font-semibold text-gray-400 text-right">Total Sales</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredData.map((item, index) => (
-                                    <tr key={index} className="border-t border-gray-800 hover:bg-white/5">
-                                        <td className="p-2">{item.name}</td>
-                                        <td className="p-2 text-right font-mono">{item.sales}</td>
+                        {isLoading ? (
+                            <p className="text-center text-gray-400 p-4">Loading data...</p>
+                        ) : (
+                            <table className="w-full text-left">
+                                <thead className="sticky top-0 bg-gray-900">
+                                    <tr>
+                                        <th className="p-2 text-sm font-semibold text-gray-400">Menu Name</th>
+                                        <th className="p-2 text-sm font-semibold text-gray-400 text-right">Total Sales</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filteredData.map((item, index) => (
+                                        <tr key={index} className="border-t border-gray-800 hover:bg-white/5">
+                                            <td className="p-2">{item.name}</td>
+                                            <td className="p-2 text-right font-mono">{item.sales.toLocaleString()}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
                     </div>
                 </div>
             </motion.div>
@@ -131,32 +96,92 @@ const SalesDetailModal = ({ open, onClose, title, data }) => {
 
 // --- MAIN DASHBOARD PAGE ---
 export default function DashboardPage() {
-    const { userRole, loading } = useAuth();
-    const user = { name: 'Fachrul', imageUrl: `https://ui-avatars.com/api/?name=Fachrul&background=3b82f6&color=fff` };
+    const { userRole, userToken, loading: authLoading } = useAuth();
     const router = useRouter();
 
-    const [isModalOpen, setModalOpen] = useState(false);
-    const [modalData, setModalData] = useState({ title: '', data: [] });
-    const [chartCategory, setChartCategory] = useState('All');
-    
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    // --- STATE MANAGEMENT ---
+    const [stats, setStats] = useState({});
+    const [dailyOmzet, setDailyOmzet] = useState([]);
+    const [topProducts, setTopProducts] = useState({ Foods: [], Beverages: [], Dessert: [] });
+    const [pageLoading, setPageLoading] = useState(true);
+    const [chartLoading, setChartLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const handleOpenModal = (title, data) => {
-        setModalData({ title, data });
+    const [isModalOpen, setModalOpen] = useState(false);
+    const [modalData, setModalData] = useState({ title: '', data: [], isLoading: false });
+    
+    const [chartCategory, setChartCategory] = useState('All');
+    const [startDate, setStartDate] = useState(format(subDays(new Date(), 6), 'yyyy-MM-dd'));
+    const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+
+    // --- DATA FETCHING ---
+    const fetchDashboardData = useCallback(async () => {
+        if (!userToken) return;
+        try {
+            setPageLoading(true);
+            // Fetch stats and top products in parallel
+            const [statsRes, foodsRes, beveragesRes, dessertRes] = await Promise.all([
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/stats`, { headers: { 'Authorization': `Bearer ${userToken}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/top-products?category=Foods`, { headers: { 'Authorization': `Bearer ${userToken}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/top-products?category=Beverages`, { headers: { 'Authorization': `Bearer ${userToken}` } }),
+                fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/top-products?category=Dessert`, { headers: { 'Authorization': `Bearer ${userToken}` } })
+            ]);
+
+            if (!statsRes.ok) throw new Error('Failed to fetch dashboard stats.');
+            
+            const statsData = await statsRes.json();
+            const foodsData = await foodsRes.json();
+            const beveragesData = await beveragesRes.json();
+            const dessertData = await dessertRes.json();
+
+            setStats(statsData.data);
+            setTopProducts({
+                Foods: foodsData.data || [],
+                Beverages: beveragesData.data || [],
+                Dessert: dessertData.data || [],
+            });
+
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setPageLoading(false);
+        }
+    }, [userToken]);
+
+    const fetchChartData = useCallback(async () => {
+        if (!userToken || !startDate || !endDate) return;
+        try {
+            setChartLoading(true);
+            // --- FIX: Simplified the endDate parameter ---
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/daily-omzet?startDate=${startDate}&endDate=${endDate}`, {
+                headers: { 'Authorization': `Bearer ${userToken}` }
+            });
+            if (!response.ok) throw new Error('Failed to fetch chart data.');
+            const data = await response.json();
+            setDailyOmzet(data.data || []);
+        } catch (err) {
+            // Don't overwrite main page error, just log it
+            console.error("Chart fetch error:", err.message);
+        } finally {
+            setChartLoading(false);
+        }
+    }, [userToken, startDate, endDate]);
+
+    useEffect(() => {
+        fetchDashboardData();
+    }, [fetchDashboardData]);
+
+    useEffect(() => {
+        fetchChartData();
+    }, [fetchChartData]);
+
+
+    const handleOpenModal = (title, category) => {
+        setModalData({ title, data: topProducts[category], isLoading: false });
         setModalOpen(true);
     };
 
-    const totalOmzet = useMemo(() => dailyOmzet.reduce((acc, day) => acc + day.food + day.beverage + day.dessert, 0), []);
-    const totalFoodSales = useMemo(() => foodSalesData.reduce((acc, item) => acc + item.sales, 0), []);
-    const totalBeverageSales = useMemo(() => beverageSalesData.reduce((acc, item) => acc + item.sales, 0), []);
-    const totalDessertSales = useMemo(() => dessertSalesData.reduce((acc, item) => acc + item.sales, 0), []);
-
-    const darkTheme = createTheme({
-        palette: {
-            mode: 'dark',
-        },
-    });
+    const darkTheme = createTheme({ palette: { mode: 'dark' } });
 
     const chartSeries = [
         { dataKey: 'food', label: 'Food', color: '#1e3a8a' },
@@ -167,29 +192,8 @@ export default function DashboardPage() {
     const filteredSeries = chartCategory === 'All' 
         ? chartSeries 
         : chartSeries.filter(s => s.label === chartCategory);
-    
-    const filteredChartData = useMemo(() => {
-        const today = startOfDay(new Date());
-        
-        if (startDate && endDate) {
-            const start = startOfDay(new Date(startDate));
-            const end = startOfDay(new Date(endDate));
-            
-            return dailyOmzet.filter(item => {
-                const itemDate = startOfDay(new Date(item.date));
-                return itemDate >= start && itemDate <= end;
-            });
-        }
-        
-        const sevenDaysAgo = subDays(today, 6);
-        return dailyOmzet.filter(item => {
-            const itemDate = startOfDay(new Date(item.date));
-            return itemDate >= sevenDaysAgo && itemDate <= today;
-        });
-    }, [startDate, endDate]);
 
-
-    if (loading) {
+    if (authLoading) {
         return <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">Loading...</div>;
     }
 
@@ -201,6 +205,16 @@ export default function DashboardPage() {
             </div>
         );
     }
+    
+    if (error) {
+         return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white">
+                <AlertCircle className="w-12 h-12 text-red-500 mb-4"/>
+                <p className="text-xl">Failed to load dashboard</p>
+                <p className="text-gray-400">{error}</p>
+            </div>
+        );
+    }
 
     return (
         <div className="flex min-h-screen bg-gradient-to-br from-gray-900 to-gray-950 text-white font-sans">
@@ -209,16 +223,16 @@ export default function DashboardPage() {
                 <Header title="Dashboard" />
 
                 <motion.div 
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1, transition: { staggerChildren: 0.1 } }}
                 >
-                    <StatCard icon={<BarChart />} title="Total Orders" value="1,280" />
-                    <StatCard icon={<DollarSign />} title="Total Omzet" value={`Rp ${totalOmzet.toLocaleString('id-ID')}`} />
-                    <StatCard icon={<ChefHat />} title="All Menu Orders" value={(totalFoodSales + totalBeverageSales + totalDessertSales).toLocaleString()} />
-                    <StatCard icon={<Utensils />} title="Total Foods Orders" value={totalFoodSales.toLocaleString()} onClick={() => handleOpenModal('Foods Sales', foodSalesData)} />
-                    <StatCard icon={<GlassWater />} title="Total Beverages Orders" value={totalBeverageSales.toLocaleString()} onClick={() => handleOpenModal('Beverages Sales', beverageSalesData)} />
-                    <StatCard icon={<IceCream />} title="Total Desserts Orders" value={totalDessertSales.toLocaleString()} onClick={() => handleOpenModal('Desserts Sales', dessertSalesData)} />
+                    <StatCard icon={<BarChart size={28} />} title="Total Orders" value={stats.totalOrders?.toLocaleString() || '0'} isLoading={pageLoading} />
+                    <StatCard icon={<DollarSign size={28} />} title="Total Omzet" value={`Rp ${stats.totalOmzet?.toLocaleString('id-ID') || '0'}`} isLoading={pageLoading} />
+                    <StatCard icon={<ChefHat size={28} />} title="All Menu Orders" value={stats.totalItemsSold?.toLocaleString() || '0'} isLoading={pageLoading} />
+                    <StatCard icon={<Utensils size={28} />} title="Total Foods Orders" value={stats.totalFoodSales?.toLocaleString() || '0'} onClick={() => handleOpenModal('Foods Sales', 'Foods')} isLoading={pageLoading}/>
+                    <StatCard icon={<GlassWater size={28} />} title="Total Beverages Orders" value={stats.totalBeverageSales?.toLocaleString() || '0'} onClick={() => handleOpenModal('Beverages Sales', 'Beverages')} isLoading={pageLoading} />
+                    <StatCard icon={<IceCream size={28} />} title="Total Desserts Orders" value={stats.totalDessertSales?.toLocaleString() || '0'} onClick={() => handleOpenModal('Desserts Sales', 'Dessert')} isLoading={pageLoading} />
                 </motion.div>
 
                 <motion.div 
@@ -247,13 +261,16 @@ export default function DashboardPage() {
                     </div>
                     <div className="w-full h-96 overflow-x-auto">
                         <div className="min-w-[700px] h-full">
-                           <ThemeProvider theme={darkTheme}>
+                           {chartLoading ? (
+                               <div className="w-full h-full flex items-center justify-center">Loading chart data...</div>
+                           ) : (
+                            <ThemeProvider theme={darkTheme}>
                                 <MuiBarChart
-                                    dataset={filteredChartData}
+                                    dataset={dailyOmzet}
                                     xAxis={[{ 
                                         dataKey: 'date', 
                                         scaleType: 'band', 
-                                        valueFormatter: (dateStr) => format(new Date(dateStr), 'dd/MM/yyyy') 
+                                        valueFormatter: (dateStr) => format(new Date(dateStr), 'dd MMM') 
                                     }]}
                                     series={filteredSeries.map(s => ({
                                         dataKey: s.dataKey,
@@ -264,6 +281,7 @@ export default function DashboardPage() {
                                     grid={{ horizontal: true }}
                                 />
                            </ThemeProvider>
+                           )}
                         </div>
                     </div>
                 </motion.div>
@@ -274,6 +292,7 @@ export default function DashboardPage() {
                 onClose={() => setModalOpen(false)}
                 title={modalData.title}
                 data={modalData.data}
+                isLoading={modalData.isLoading}
             />
         </div>
     );
